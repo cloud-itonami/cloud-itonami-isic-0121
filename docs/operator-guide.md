@@ -38,15 +38,21 @@ needed.
     :notes "healthy yield"}
    ```
 
-2. **Actor Processes** (`operation/run-operation store request context`)
+2. **Actor Processes** (real compiled `langgraph-clj` `StateGraph`,
+   `vineyardops.operation/build`, run via `langgraph.graph/run*`)
    - `:advise` — `VineyardOpsAdvisor` proposes an action (`vineyardops.advisor`)
    - `:govern` — `VineyardOperationsGovernor` checks hard invariants and escalation gates (`vineyardops.governor`)
-   - phase gate — rollout-phase constraints applied on top of the Governor's verdict (`vineyardops.phase`)
+   - `:decide` — rollout-phase constraints applied on top of the Governor's verdict (`vineyardops.phase`)
 
-3. **Outcomes** (`:disposition` on the return value)
-   - **`:commit`** — operation logged, robot proceeds (`:record` is present)
-   - **`:escalate`** — operation held pending human decision (audit fact `:t :approval-requested`)
-   - **`:hold`** — operation blocked, hard violation (audit fact `:t :governor-hold`, cites `:violations`)
+3. **Outcomes** (`:decision` on the graph's return state)
+   - **`:commit`** — operation logged, robot proceeds (`:record` is present, and an
+     audit fact `:t :committed` is appended to `vineyardops.store`'s ledger)
+   - **`:escalate`** — the graph GENUINELY interrupts (checkpointed) at
+     `:request-approval`, held pending human decision (audit fact
+     `:t :approval-requested`); nothing is appended to the ledger until a
+     human resumes
+   - **`:hold`** — operation blocked, hard violation (audit fact `:t :governor-hold`,
+     cites `:violations`, appended to the ledger)
 
 ### Escalation Scenarios
 
@@ -62,25 +68,30 @@ needed.
 
 ### Resuming Escalated Operations
 
-`vineyardops.operation` is currently a synchronous stub (see its docstring):
-one call to `(operation/run-operation store request context)` runs the full
-`advise -> govern -> phase-gate` flow and returns immediately with a
-`:disposition` of `:commit`, `:escalate`, or `:hold`. There is **no
-persisted pause/resume yet** — that requires the deferred `langgraph-clj`
-StateGraph integration (`interrupt-before` + checkpoint-based resume,
-mirroring `cloud-itonami-isic-0141`). Until then, an `:escalate`
-disposition means: **do not commit** — the caller (production
-integration layer) is responsible for holding the proposal for human
-review and re-submitting a follow-up operation once approved.
+`vineyardops.operation/build` compiles a REAL `langgraph-clj`
+`StateGraph` with `interrupt-before #{:request-approval}`: an
+`:escalate` disposition GENUINELY pauses (checkpointed) the compiled
+graph at the `:request-approval` node — `(langgraph.graph/run* actor
+{:request .. :context ..} {:thread-id tid})` returns with
+`:status :interrupted` and `:frontier [:request-approval]`, and
+**nothing lands in the ledger yet**. A human operator resumes the SAME
+compiled graph/thread with
+`(langgraph.graph/run* actor {:approval {:status :approved :by ..}}
+{:thread-id tid :resume? true})` (or `:rejected`), which routes to
+`:commit` or `:hold` respectively and appends exactly one fact to the
+ledger. See `vineyardops.sim`/`test/vineyardops/operation_test.cljc` for
+worked examples.
 
 ## Audit & Transparency
 
-Every operation run returns an `:audit` vector containing an
+Every graph run's final state includes an `:audit` vector containing an
 advisor-proposal trace and a disposition fact (`:committed`,
-`:governor-hold`, or `:approval-requested`). Production integration is
-responsible for appending these facts to an append-only ledger (the
-reference implementation does not include a ledger-writer — that's a
-backend-integration concern, same seam point as the `Store`).
+`:governor-hold`, `:approval-requested`, `:approval-granted`, or
+`:approval-rejected`). The `:commit` and `:hold` graph nodes ALSO
+genuinely append the terminal decision fact to `vineyardops.store`'s
+append-only audit ledger (`store/ledger` / `store/append-ledger!`) — not
+a backend-integration concern left to callers; it is wired into the
+compiled graph itself.
 
 - Every proposal produces a trace, regardless of outcome
 - Every hold cites the specific Governor rule(s) violated (`:violations`)
@@ -92,12 +103,17 @@ The actor provides a standard protocol (`vineyardops.store/Store`) for backend
 integration:
 
 - **Vineyard/block lookup** — `(store/registered-vineyard store vineyard-id)`
+- **Audit ledger read** — `(store/ledger store)`
+- **Audit ledger append** — `(store/append-ledger! store fact)` (called by the
+  compiled graph's `:commit`/`:hold` nodes; not a caller responsibility)
 
 Implementations include in-memory `MemStore` (testing, `vineyardops.store`),
 and future Datomic/kotoba-server backends (the same seam point all
-cloud-itonami actors use). Record-commit and ledger-append are integration
-responsibilities on top of `operation/run-operation`'s return value, not
-part of the `Store` protocol itself.
+cloud-itonami actors use). Record-commit (applying `:record` to the SSoT)
+remains an integration responsibility on top of the compiled graph's
+return state; ledger-append is now genuinely part of the `Store` protocol
+and is wired into `vineyardops.operation/build`'s `:commit`/`:hold` nodes
+itself.
 
 ## Safety Guarantees
 

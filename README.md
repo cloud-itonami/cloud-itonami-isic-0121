@@ -12,16 +12,25 @@ decisions.
 **Maturity: `:implemented`.** `src/vineyardops/` implements the
 `VineyardOpsAdvisor` (`vineyardops.advisor`) and the independent
 `VineyardOperationsGovernor` (`vineyardops.governor`), composed by
-`vineyardops.operation` following the itonami actor pattern
-(ADR-2607011000): `advise -> govern -> phase-gate -> commit | escalate |
-hold`. See [Testing](#testing) below for the current green test count
+`vineyardops.operation` into a **genuinely compiled `langgraph-clj`
+`StateGraph`** (`langgraph.graph/state-graph` + `compile-graph`,
+`interrupt-before #{:request-approval}` for real checkpointed
+human-in-the-loop resume): `intake -> advise -> govern -> decide -+->
+commit / request-approval -> commit / hold`. Every committed/held/
+approval-rejected decision fact lands in `vineyardops.store`'s
+append-only audit ledger (`ledger` / `append-ledger!`), genuinely wired
+into the graph's `:commit`/`:hold` terminal nodes. See
+[Testing](#testing) below for the current green test count
 (`clojure -M:test`).
 
-`vineyardops.operation` is a synchronous stub of this flow (see its
-docstring) — production wiring into a `langgraph-clj` StateGraph with
-`interrupt-before`/checkpoint-based human-in-the-loop resume for escalated
-operations is deferred, mirroring `cloud-itonami-isic-0141`'s own
-`cattleops.operation`.
+An earlier version of this repository claimed `:implemented` while
+`operation.cljc`'s own docstring admitted the StateGraph integration was
+"deferred" (a hand-rolled closure with zero `langgraph.graph` calls), the
+real `langgraph` dependency sat unused under the `:dev :override-deps`
+alias (`deps.edn`'s main `:deps` was `{}`), and `store.cljc` had no
+ledger concept anywhere in `src/`. All three are fixed now — see
+`blueprint.edn`'s `:itonami.blueprint/implemented-slice` for the full
+diff summary.
 
 ## What this does NOT do
 
@@ -109,12 +118,12 @@ Mirrors `cloud-itonami-isic-0141` (`cattleops.*`) module-for-module:
 
 - `vineyardops.facts` — reference data: supply-category cost thresholds, grape classes
 - `vineyardops.registry` — pure independent verification functions (cost/count/confidence)
-- `vineyardops.store` — `Store` protocol + in-memory `MemStore` (vineyard/block registration lookup)
+- `vineyardops.store` — `Store` protocol + in-memory `MemStore` (vineyard/block registration lookup, append-only audit ledger)
 - `vineyardops.advisor` — `Advisor` protocol + `MockAdvisor` (the sealed LLM/decision node)
 - `vineyardops.governor` — `VineyardOperationsGovernor`: hard invariants + escalation gates
 - `vineyardops.phase` — 0→3 rollout phase gate
-- `vineyardops.operation` — composes advisor → governor → phase into one operation run
-- `vineyardops.sim` — demo runner (`clojure -M:run`)
+- `vineyardops.operation` — compiles advisor → governor → phase into a real `langgraph-clj` `StateGraph` (`build`), with checkpointed `interrupt-before` human-in-the-loop resume
+- `vineyardops.sim` — demo runner (`clojure -M:run`), drives the compiled graph end-to-end via `langgraph.graph/run*`
 
 ## Capability layer
 
