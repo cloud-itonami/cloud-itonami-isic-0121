@@ -1,4 +1,4 @@
-{:itonami.blueprint/id "cloud-itonami-0121"
+{:itonami.blueprint/id "cloud-itonami-isic-0121"
  :itonami.blueprint/name "Vineyard Operations Coordination"
  :itonami.blueprint/isic-rev5 "0121"
  :itonami.blueprint/domain :agriculture/grape-growing
