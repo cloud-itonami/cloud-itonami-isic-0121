@@ -9,7 +9,7 @@
 
   Usage: `clojure -M:dev:render-html [out-file]`
   (default `docs/samples/operator-console.html`)."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [vineyardops.store :as store]
             [vineyardops.operation :as op]
             [langgraph.graph :as g]))
