@@ -1,0 +1,20 @@
+{:format :kotoba.cljk-origin/v1
+ :renamed-on "2026-09-11"
+ :decision "adr-2609111500-cljk-rename-all-clojure-source (com-junkawasaki/root 90-docs/adr; owner instruction 2026-09-11)"
+ :rule "value = the extension the file had before the rename. A path ending in .clj.cljk or .cljs.cljk kept it in the name because both platform files existed (or the plain target was taken)."
+ :origins
+ {"src/vineyardops/advisor.cljk" ".cljc"
+  "src/vineyardops/facts.cljk" ".cljc"
+  "src/vineyardops/governor.cljk" ".cljc"
+  "src/vineyardops/operation.cljk" ".cljc"
+  "src/vineyardops/phase.cljk" ".cljc"
+  "src/vineyardops/registry.cljk" ".cljc"
+  "src/vineyardops/render_html.cljk" ".clj"
+  "src/vineyardops/sim.cljk" ".cljc"
+  "src/vineyardops/store.cljk" ".cljc"
+  "test/vineyardops/facts_test.cljk" ".cljc"
+  "test/vineyardops/governor_test.cljk" ".cljc"
+  "test/vineyardops/operation_test.cljk" ".cljc"
+  "test/vineyardops/phase_test.cljk" ".cljc"
+  "test/vineyardops/registry_test.cljk" ".cljc"
+  "test/vineyardops/store_test.cljk" ".cljc"}}
