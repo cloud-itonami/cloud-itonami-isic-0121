@@ -43,7 +43,7 @@
  reused UNCHANGED -- this fix only wires the existing vineyard
  operations-coordination domain policy into a real compiled graph and a
  real ledger, it does not redesign it.
- Proven end-to-end by `test/vineyardops/operation_test.cljc` (ledger
+ Proven end-to-end by `test/vineyardops/operation_test.cljk` (ledger
  stays empty until a real commit, hold-for-unregistered-vineyard/
  non-positive-quantity/blocked-field-equipment/blocked-spray-application
  even at phase-3, phase-0-sandbox escalates a clean proposal,

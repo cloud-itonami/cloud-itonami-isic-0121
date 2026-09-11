@@ -79,7 +79,7 @@ compiled graph/thread with
 `(langgraph.graph/run* actor {:approval {:status :approved :by ..}}
 {:thread-id tid :resume? true})` (or `:rejected`), which routes to
 `:commit` or `:hold` respectively and appends exactly one fact to the
-ledger. See `vineyardops.sim`/`test/vineyardops/operation_test.cljc` for
+ledger. See `vineyardops.sim`/`test/vineyardops/operation_test.cljk` for
 worked examples.
 
 ## Audit & Transparency
