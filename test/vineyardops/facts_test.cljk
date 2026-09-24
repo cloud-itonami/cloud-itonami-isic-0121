@@ -1,5 +1,5 @@
 (ns vineyardops.facts-test
-  (:require [clojure.test :refer [deftest is are testing]]
+  (:require [kotoba.test :refer [deftest is are testing]]
             [vineyardops.facts :as facts]))
 
 (deftest supply-category-lookup
