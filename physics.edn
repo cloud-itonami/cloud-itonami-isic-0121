@@ -1,0 +1,43 @@
+;; What this vertical's robot physically does, declared for
+;; kotoba.robotics.process (kotoba-lang/robotics). `kbb -M:dev:physics` runs it.
+;;
+;; README "Robotics premise": a facility-management robot keeps vineyard block
+;; records, schedules field operations and handles supplies for a grape grower
+;; (ISIC 0121). Its physical work at harvest: carrying picking lugs up the
+;; hillside rows, tipping lugs into the half-ton bin, and cooling the picked
+;; grapes before they reach the winery.
+;;
+;; Every number without a cited source is marked `estimate` in its :basis.
+;; Replacing an estimate with a sourced value is this bot's growth work.
+{:physics/schema "itonami.physical-ai.spec.v1"
+ :repo "cloud-itonami/cloud-itonami-isic-0121"
+ :cases
+ [{:id :grape-lugs-up-hillside-row
+   :kind :transport
+   :procedure "tracked row carrier brings filled grape lugs up the hillside vineyard row to the bin at the headland"
+   :params {:mass-kg 150.0 :payload-kg 200.0 :distance-m 120.0 :v-max-mps 1.2 :a-max-mps2 0.5
+            :brake-decel-mps2 1.0 :drive-force-n 1200.0 :crr 0.07
+            :cog-height-m 0.60 :support-half-length-m 0.45 :max-time-s 3600.0}
+   :sweep {:param :slope-deg :values [0.0 5.0 10.0 15.0 20.0]}
+   :quantity :cycle-time-s
+   :limit {:max 130.0 :basis "estimate: one row leg inside the pickers' lug-exchange interval"}
+   :boundary {:lo 0.0 :hi 30.0}}
+  {:id :lug-into-harvest-bin
+   :kind :manipulator
+   :procedure "arm lifts a full picking lug from the carrier and tips it over the rim of the harvest bin"
+   :params {:l1-m 0.55 :l2-m 0.45 :m1-kg 6.0 :m2-kg 4.0
+            :from [0.60 0.10] :to [0.40 0.85] :duration-s 2.0 :steps 400}
+   :sweep {:param :payload-kg :values [5.0 10.0 15.0 20.0 25.0]}
+   :quantity :peak-tau1-nm
+   :limit {:max 150.0 :basis "estimate: continuous shoulder torque of a 10-15 kg-class arm"}
+   :boundary {:lo 1.0 :hi 60.0}}
+  {:id :picked-grapes-cooling
+   :kind :thermal
+   :procedure "a 15 cm layer of picked clusters in a lug is cooled in the 2 C cold room from both faces; the middle of the layer is judged"
+   :params {:thickness-m 0.075 :conductivity-w-mk 0.35 :density-kg-m3 600.0 :specific-heat-j-kgk 3600.0
+            :t0-c 28.0 :t-hot-c 2.0 :h-front-w-m2k 15.0 :t-back-ambient-c 28.0 :h-back-w-m2k 0.0
+            :threshold-c 99.0 :nodes 11}
+   :sweep {:param :duration-s :values [3600.0 7200.0 14400.0 28800.0 43200.0]}
+   :quantity :final-back-c
+   :limit {:max 10.0 :basis "estimate: fruit brought below ~10 C before crushing to hold back oxidation and wild fermentation"}
+   :boundary {:lo 1800.0 :hi 86400.0}}]}
