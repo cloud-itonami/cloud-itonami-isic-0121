@@ -1,5 +1,5 @@
 (ns vineyardops.store-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [vineyardops.store :as store]))
 
 (deftest mem-store-creation
